@@ -14,7 +14,7 @@ feats = [x for x in feats if x.endswith('.npy')]
 if not os.path.exists(final_root):
     os.mkdir(final_root)
 
-with open("./v_vlen_" + dataset + ".json", 'r') as f:
+with open("./preprocess/v_vlen_" + dataset + ".json", 'r') as f:
     v_vlen = json.load(f)
 df = pd.DataFrame(feats, columns=['paths'])
 df['vid'] = [d.rsplit('/', 1)[1].rsplit('_', 1)[0] for d in df.paths]

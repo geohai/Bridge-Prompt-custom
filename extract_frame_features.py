@@ -32,7 +32,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.FullLoader)
     working_dir = os.path.join('./exp', config['network']['type'], config['network']['arch'], config['data']['dataset'],
                                args.log_time)
     print('-' * 80)

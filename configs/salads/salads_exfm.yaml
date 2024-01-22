@@ -1,18 +1,18 @@
-pretrain: "./exp/clip_ucf/ViT-B/16/breakfast/20211112_123508_splt2/last_model.pt"
+pretrain: "./exp/split3/last_model.pt"
 seed: 1024
 data:
     dataset: salads
     modality: RGB
     num_frames: 32
     seg_length: 1
-    split: 1
+    split: 3
     batch_size: 64
     workers: 32
     gpus: 4
     num_classes: 12
     index_bias: 1
     input_size: 224
-    save_dir: './data/50salads/features_dir/50salads_vit_features_splt1'
+    save_dir: './data/50salads/features_dir/50salads_vit_features_splt3'
     randaug:
         N: 0 #2
         M: 0  #9

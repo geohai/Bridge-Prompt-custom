@@ -1,7 +1,7 @@
 import os
 import torch
 import torch.nn as nn
-from datasets import Breakfast, GTEA, SALADS
+from datasets import Breakfast, GTEA, SALADS, EGOEXO
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
@@ -18,7 +18,11 @@ from utils.solver import _optimizer, _lr_scheduler
 from utils.tools import *
 from utils.text_prompt import *
 from utils.saving import *
+from tqdm import tqdm
 
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+print(torch.cuda.device_count())
+print(torch.cuda.get_device_name())
 
 class TextCLIP(nn.Module):
     def __init__(self, model):
@@ -48,6 +52,10 @@ def get_clip_loss(image_embedding, text_embedding, logit_scale, loss_img, loss_t
 
 
 def main():
+    # torch.cuda.set_device(1)
+    # device = torch.device("cuda:1")
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
     wandb_on = False
     global args, best_prec1
     global global_step
@@ -81,8 +89,12 @@ def main():
     shutil.copy('train.py', working_dir)
     shutil.copy('modules/fusion_module.py', working_dir)
 
+    print(torch.cuda.device_count())
+    print(torch.cuda.get_device_name(0))
+
     device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
+   
     base_model, model_state_dict = clip.load(config.network.arch, device=device, jit=False, tsm=config.network.tsm,
                                              T=config.data.num_segments, dropout=config.network.drop_out,
                                              emb_dropout=config.network.emb_dropout, pretrain=config.network.init,
@@ -103,6 +115,7 @@ def main():
     model_text = torch.nn.DataParallel(model_text).cuda()
     model_image = torch.nn.DataParallel(model_image).cuda()
     fusion_model = torch.nn.DataParallel(fusion_model).cuda()
+
     if wandb_on:
         wandb.watch(base_model)
         wandb.watch(fusion_model)
@@ -118,10 +131,14 @@ def main():
     elif args.dataset == 'salads':
         train_data = SALADS(transform=transform_train, mode='train', num_frames=config.data.num_frames,
                             n_split=config.data.n_split)
-
+        
+    elif args.dataset == 'egoexo':
+        train_data = EGOEXO(transform=transform_train, mode='train', num_frames=config.data.num_frames,
+                            n_split=config.data.n_split, ds=config.data.ds, ol=config.data.ol)
+        print(train_data.__len__())
     train_loader = DataLoader(train_data, batch_size=config.data.batch_size, num_workers=config.data.workers,
                               shuffle=True, pin_memory=True, drop_last=True)
-
+    
     if device == "cpu":
         model_text.float()
         model_image.float()
@@ -165,7 +182,8 @@ def main():
 
     for k, v in base_model.named_parameters():
         print('{}: {}'.format(k, v.requires_grad))
-    for epoch in range(start_epoch, config.solver.epochs):
+    for epoch in tqdm(range(start_epoch, config.solver.epochs)):
+        print('-------EPOCH: {}-------'.format(epoch))
         model_image.train()
         model_text.train()
         fusion_model.train()
@@ -180,11 +198,10 @@ def main():
 
             images = images.view((-1, config.data.num_frames, 3) + images.size()[-2:])
             b, t, c, h, w = images.size()
-
             text_cnt, text_acts, text_all, label_cnt = text_prompt_slide(train_data.classes,
-                                                                         list_id, args.dataset,
-                                                                         config.data.max_act)
-
+                                                                        list_id, args.dataset,
+                                                                        config.data.max_act)
+            
             images = images.to(device, non_blocking=True).view(-1, c, h, w)  # omit the Image.fromarray if the images
             text_cnt = text_cnt.to(device, non_blocking=True)
             text_acts = text_acts.to(device, non_blocking=True)
@@ -205,6 +222,9 @@ def main():
             text_pos_embedding = text_pos_embedding.view(b, -1, text_pos_embedding.shape[-1])
 
             image_embedding = image_embedding.unsqueeze(1).repeat(1, config.data.max_act, 1, 1)
+            print('SHAPE----')
+            print(image_embedding.shape)
+            print(text_pos_embedding.shape)
             cnt_emb, image_embedding = fusion_model(image_embedding, text_pos_embedding)
 
             if config.network.fix_text:

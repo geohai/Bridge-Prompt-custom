@@ -3,14 +3,49 @@ import clip
 import numpy as np
 
 
-def text_prompt_slide(classes, id_list, dataset, cnt_max=5):
+
+
+
+#### classes
+# 0 cut_tomato
+# 1 place_tomato_into_bowl
+# 2 cut_cheese
+# 3 place_cheese_into_bowl
+# 4 cut_lettuce
+# 5 place_lettuce_into_bowl
+# 6 add_salt
+# 7 add_vinegar
+# 8 add_oil
+# 9 add_pepper
+# 10 mix_dressing
+# 11 peel_cucumber
+# 12 cut_cucumber
+# 13 place_cucumber_into_bowl
+# 14 add_dressing
+# 15 mix_ingredients
+# 16 serve_salad_onto_plate
+# 17 action_start
+# 18 action_end
+#
+
+# take these and map to tools (one-hot encode tools)
+# co-train vision encoder and accelerometry encoder ?
+
+
+# 
+
+
+
+def text_prompt_slide(classes, id_list, dataset, cnt_max=9):
     text_aug_cnts = [f"This clip contains no actions.",
                      f"This clip contains only one action,", f"This clip contains two actions,",
                      f"This clip contains three actions,", f"This clip contains four actions,",
                      f"This clip contains five actions,", f"This clip contains six actions,",
-                     f"This clip contains seven actions,", f"This clip contains eight actions,"]
+                     f"This clip contains seven actions,", f"This clip contains eight actions,",
+                     f"This clip contains nine actions,", f"This clip contains ten actions,", 
+                     f"This clip contains eleven actions,", f"This clip contains twelve actions,",]
     text_aug_acts = [f"Firstly, ", f"Secondly, ", f"Thirdly, ", f"Fourthly, ",
-                     f"Fifthly, ", f"Sixthly, ", f"Seventhly, ", f"Eighthly, "]
+                     f"Fifthly, ", f"Sixthly, ", f"Seventhly, ", f"Eighthly, ", f"Ninthly, ", f"Tenthly, "]
     text_aug_temp = [f"the person is {{}}.", f"the person is performing the action of {{}}.",
                      f"the character is {{}}.", f"he or she is {{}}.", f"the action {{}} is being played.",
                      f"it is the action of {{}}.", f"the human is {{}}.",
@@ -24,7 +59,8 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=5):
                     f"The second action does not exist.", f"The third action does not exist.",
                     f"The fourth action does not exist.", f"The fifth action does not exist.",
                     f"The sixth action does not exist.", f"The seventh action does not exist.",
-                    f"The eighth action does not exist."]
+                    f"The eighth action does not exist.", f"The ninth action does not exist.",
+                    f"The tenth action does not exist."]
     text_aug_cnts = text_aug_cnts[:cnt_max+1]
     text_aug_acts = text_aug_acts[:cnt_max]
     text_no_acts = text_no_acts[:cnt_max]
@@ -37,9 +73,24 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=5):
     id_list_cnt = id_list >= 0
     id_list_cnt = torch.sum(id_list_cnt, dim=1)
     res_token_cnt = []
-
+    # print('---')
+    # print(id_list_cnt)
     for id in id_list_cnt:
-        res_token_cnt.append(clip.tokenize(text_aug_cnts[id.item()]))
+        # print(id)
+        # print('COUNT:')
+        # print(len(text_aug_cnts))
+        # print('ID:')
+        # print(id.item())
+        # print(text_aug_cnts[id.item()])
+        try:
+            res_token_cnt.append(clip.tokenize(text_aug_cnts[id.item()]))
+        except:
+            print('-------------------------ITEM: ----------------------')
+            print(id.item())
+            print('----------CNTS: ---------------')
+            print(len(text_aug_cnts))
+            print(text_aug_cnts)
+            raise Exception
     res_token_cnt = torch.cat(res_token_cnt)
 
     res_token_acts = []
@@ -57,10 +108,14 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=5):
         sentences_all = ''
         for i in range(num_acts):
             sent = text_aug_acts[i] + text_aug_temp[text_id[ii][i]].format(action_list[i])
+            # print(sent)
             sentences.append(clip.tokenize(sent))
             sentences_all += ' ' + text_aug_acts[i] + text_long_temp[text_id_long[ii][i]].format(action_list[i])
         for i in range(num_acts, len(text_no_acts)):
+            print(text_no_acts[i])
             sentences.append(clip.tokenize(text_no_acts[i]))
+
+        # print(sentences)
         res_token_acts.append(torch.cat(sentences))
         sentences_all = sentences_all[1:]
         res_token_all.append(clip.tokenize(sentences_all))
@@ -110,6 +165,7 @@ def text_prompt_ord_emb(cnt_max=5):
                      f"this is the seventh action.", f"this is the eighth action."]
     text_aug_acts = text_aug_acts[:cnt_max]
 
+    # print(text_aug_acts)
     lst = [clip.tokenize(txt) for txt in text_aug_acts]
     lst = torch.cat(lst)
 

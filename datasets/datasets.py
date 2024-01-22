@@ -485,7 +485,7 @@ class SALADS(data.Dataset):
                  pretrain=True,
                  n_split=1):
         if ds is None:
-            ds = [24, 32]
+            ds = [15, 30]
         if ol is None:
             ol = [1, 1]
         self.root = root
@@ -617,6 +617,112 @@ class SALADS_FRAMES(data.Dataset):
             seq = torch.stack(seq)
         fname = vsplt + '_' + videoname[1] + '.npy'
         return seq, fname
+
+    def __len__(self):
+        # return 1
+        return len(self.train_split)
+
+
+
+class EGOEXO(data.Dataset):
+    def __init__(self,
+                 root='./data/egoexo',
+                 transform=None, mode='val',
+                 num_frames=16, ds=None, ol=None,
+                 small_test=False,
+                 frame_dir="./data/egoexo/frames/",
+                 label_dir="./data/egoexo/action_descriptions_id/30fps/",
+                 class_dir="./data/egoexo/mapping_adj.json",
+                 pretrain=True,
+                 n_split=1):
+        if ds is None:
+            ds = [24, 32]
+        if ol is None:
+            ol = [1, 1]
+        self.root = root
+        self.transform = transform
+        self.mode = mode
+        self.num_frames = num_frames
+        self.ds = ds
+        self.overlap = ol
+        self.small_test = small_test
+        self.frame_dir = frame_dir
+        self.label_dir = label_dir
+        self.class_dir = class_dir
+        self.pretrain = pretrain
+        self.n_split = n_split
+
+        # if self.mode == 'train':
+        with open(self.class_dir, 'r') as f:
+            self.classes = json.load(f)
+            self.classes = {int(k): v for k, v in self.classes.items()}
+        # else:
+        #     with open(self.ext_class_dir, 'r') as f:
+        #         self.classes = json.load(f)
+        #         self.classes = {int(k): v for k, v in self.classes.items()}
+
+        if not self.small_test:
+            if self.mode == 'train':
+                self.train_split = np.load(
+                    os.path.join(root, 'splits',
+                                 f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+                print(self.train_split)
+                print(os.path.join(root, 'splits',
+                                 f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+                print(self.train_split)
+            else:
+                self.train_split = np.load(
+                    os.path.join(root, 'splits',
+                                 f'test_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+        else:
+            self.train_split = np.load(
+                os.path.join(root, 'splits',
+                             f'smalltest_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+
+    def frame_sampler(self, videoname, vlen):
+        start_idx = int(videoname[1])
+        ds = videoname[2]
+        seq_idx = np.arange(self.num_frames) * int(ds) + start_idx
+        seq_idx = np.where(seq_idx < vlen, seq_idx, vlen - 1)
+        return seq_idx
+
+    def __getitem__(self, index):
+        videoname = self.train_split[index]
+        vsplt = videoname[0]
+        vpath = os.path.join(self.frame_dir, vsplt)
+        vpath = os.path.join(vpath, os.listdir(vpath)[0]) # TODO: refactor
+        # print(vpath)
+        vlen = len([f for f in os.listdir(vpath) if os.path.isfile(os.path.join(vpath, f))])
+        vlabel = np.load(os.path.join(self.label_dir, vsplt + '.npy'), allow_pickle=True).astype(np.int_)
+        # diff = vlabel.size - vlen
+        # if diff > 0:
+        #     vlabel = vlabel[:-diff]
+        # elif diff < 0:
+        #     vlabel = np.pad(vlabel, (0, -diff), 'constant', constant_values=(0, vlabel[-1]))
+        path_list = os.listdir(vpath)
+        path_list.sort(key=lambda x: int(x[4:-4]))
+        frame_index = self.frame_sampler(videoname, vlen)
+        seq = [Image.open(os.path.join(vpath, path_list[i])).convert('RGB') for i in frame_index]
+        vid = vlabel[frame_index]
+        if self.pretrain:
+            vid = torch.from_numpy(vid)
+            vid = torch.unique_consecutive(vid)
+            vid = vid.numpy()
+            vid = np.ma.masked_equal(vid, 0)
+            vid = vid.compressed()
+            vid = np.pad(vid, (0, 10 - vid.shape[0]), 'constant', constant_values=(0, -1))
+
+        if self.transform is not None:
+            seq = self.transform(seq)
+        else:
+            convert_tensor = transforms.ToTensor()
+            seq = [convert_tensor(img) for img in seq]
+            seq = torch.stack(seq)
+        # seq = torch.stack(seq, 1)
+        # seq = seq.permute(1, 0, 2, 3)
+        print(seq)
+        print(vid)
+        return seq, vid
 
     def __len__(self):
         # return 1

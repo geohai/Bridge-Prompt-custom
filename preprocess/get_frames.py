@@ -18,12 +18,16 @@ fps = '15'
 if args.dataset == '50salads':
     fps = '30'
 
+print(path)
+
 for s in file_suffix:
     files.extend(glob.glob(os.path.join(path, '**', s), recursive=True))
+print(files)
 files_prefix = os.path.commonprefix(files)
 files_prefix = files_prefix.rsplit('/', 1)[0]
 file_names = [os.path.relpath(f, path) for f in files]
 
+print(file_names)
 for video in file_names:
     if not os.path.exists(os.path.join(output, video).rsplit('.', 1)[0]):
         os.makedirs(os.path.join(output, video).rsplit('.', 1)[0], exist_ok=True)

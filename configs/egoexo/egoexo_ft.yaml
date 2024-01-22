@@ -2,21 +2,21 @@ pretrain: "./models/vit-16-32f.pt"
 resume:
 seed: 1024
 data:
-    dataset: salads
+    dataset: egoexo
     modality: RGB
-    num_frames: 16
-#    ds: 16
-#    ol: 2
+    num_frames: 16 
+    ds: [48]
+    ol: [1]
     seg_length: 1
-    split: 1
+    split: 2
     batch_size: 2
     workers: 32
     gpus: 4
-    num_classes: 12
+    num_classes: 326 # TODO: Check the number of classes here. For now I am hard coding this.
     index_bias: 1
     input_size: 224
     n_split: 5
-    max_act: 6
+    max_act: 9  # TODO: play with this parameter
     randaug:
         N: 0 #2
         M: 0  #9
