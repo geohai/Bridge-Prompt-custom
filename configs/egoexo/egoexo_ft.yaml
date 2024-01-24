@@ -5,18 +5,18 @@ data:
     dataset: egoexo
     modality: RGB
     num_frames: 16 
-    ds: [48]
+    ds: [24]
     ol: [1]
     seg_length: 1
-    split: 2
-    batch_size: 2
+    split: 1 # pretty sure this does not do anything
+    batch_size: 25
     workers: 32
-    gpus: 4
+    gpus: 2
     num_classes: 326 # TODO: Check the number of classes here. For now I am hard coding this.
     index_bias: 1
     input_size: 224
-    n_split: 5
-    max_act: 9  # TODO: play with this parameter
+    n_split: 1 # MAKE SURE TO CHAMGE THIS
+    max_act: 8  # TODO: play with this parameter
     randaug:
         N: 0 #2
         M: 0  #9

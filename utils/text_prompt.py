@@ -36,14 +36,13 @@ import numpy as np
 
 
 
-def text_prompt_slide(classes, id_list, dataset, cnt_max=9):
+def text_prompt_slide(classes, id_list, dataset, cnt_max=10):
     text_aug_cnts = [f"This clip contains no actions.",
                      f"This clip contains only one action,", f"This clip contains two actions,",
                      f"This clip contains three actions,", f"This clip contains four actions,",
                      f"This clip contains five actions,", f"This clip contains six actions,",
                      f"This clip contains seven actions,", f"This clip contains eight actions,",
-                     f"This clip contains nine actions,", f"This clip contains ten actions,", 
-                     f"This clip contains eleven actions,", f"This clip contains twelve actions,",]
+                     f"This clip contains nine actions,", f"This clip contains ten actions,", ]
     text_aug_acts = [f"Firstly, ", f"Secondly, ", f"Thirdly, ", f"Fourthly, ",
                      f"Fifthly, ", f"Sixthly, ", f"Seventhly, ", f"Eighthly, ", f"Ninthly, ", f"Tenthly, "]
     text_aug_temp = [f"the person is {{}}.", f"the person is performing the action of {{}}.",
@@ -70,34 +69,37 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=9):
     num_long = len(text_long_temp)
     text_id = np.random.randint(num_temp, size=len(id_list) * cnt_max).reshape(-1, cnt_max)
     text_id_long = np.random.randint(num_long, size=len(id_list) * cnt_max).reshape(-1, cnt_max)
-    id_list_cnt = id_list >= 0
+    id_list_cnt = id_list >= 0  
     id_list_cnt = torch.sum(id_list_cnt, dim=1)
     res_token_cnt = []
     # print('---')
     # print(id_list_cnt)
-    for id in id_list_cnt:
-        # print(id)
-        # print('COUNT:')
-        # print(len(text_aug_cnts))
-        # print('ID:')
-        # print(id.item())
-        # print(text_aug_cnts[id.item()])
+    for id in id_list_cnt: # check the number of actions
+        if id.item() > len(text_aug_cnts):
+            print(f'Error - num actions ({id.item()}) in this segment is larger than the max {cnt_max}. Line 80 text_prompt.py')
         try:
             res_token_cnt.append(clip.tokenize(text_aug_cnts[id.item()]))
         except:
-            print('-------------------------ITEM: ----------------------')
-            print(id.item())
-            print('----------CNTS: ---------------')
-            print(len(text_aug_cnts))
-            print(text_aug_cnts)
-            raise Exception
-    res_token_cnt = torch.cat(res_token_cnt)
+            # invalid_length += 1
+            # print(f'-------------------------ITEM: {id.item()}\n')
+            # print(f'----------CNTS: {len(text_aug_cnts)}\n')
+            # print(id_list_cnt)
+            print('Invalid. Skipping. Line 86')
+            continue
+            # res_token_cnt.append(clip.tokenize(text_aug_cnts[id.item()]))
 
+
+
+            # raise Exception('Number of actions exceeds max. You probably need to make the window duration shorter. Play with parameters in preprocess/extract_datawindow.py')
+    res_token_cnt = torch.cat(res_token_cnt)
     res_token_acts = []
     res_token_all = []
 
     for ii, txt in enumerate(id_list):
         num_acts = id_list_cnt[ii].item()
+        if num_acts > len(text_aug_acts):
+            print('Error - number of actions exceeds max. Line 98 text_prompt.py')
+            num_acts = len(text_aug_acts)
         action_list = []
         for i in range(num_acts):
             action_list.append(classes[txt[i].item()])
@@ -112,13 +114,18 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=9):
             sentences.append(clip.tokenize(sent))
             sentences_all += ' ' + text_aug_acts[i] + text_long_temp[text_id_long[ii][i]].format(action_list[i])
         for i in range(num_acts, len(text_no_acts)):
-            print(text_no_acts[i])
+            # print(text_no_acts[i])
             sentences.append(clip.tokenize(text_no_acts[i]))
 
         # print(sentences)
         res_token_acts.append(torch.cat(sentences))
         sentences_all = sentences_all[1:]
-        res_token_all.append(clip.tokenize(sentences_all))
+        try:
+            res_token_all.append(clip.tokenize(sentences_all))
+        except: 
+            print('Sentences all is too long. Cropping to 77 words.')
+            sentences_all = sentences_all[:77]
+            res_token_all.append(clip.tokenize(sentences_all))
         # token = clip.tokenize(sentence)
         # res_token.append(token)
         # text_dict[ii] = torch.cat([clip.tokenize(txt.format(c)) for i, c in data.classes])

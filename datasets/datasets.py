@@ -660,7 +660,8 @@ class EGOEXO(data.Dataset):
         #     with open(self.ext_class_dir, 'r') as f:
         #         self.classes = json.load(f)
         #         self.classes = {int(k): v for k, v in self.classes.items()}
-
+        print(os.path.join(root, 'splits',
+                                 f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
         if not self.small_test:
             if self.mode == 'train':
                 self.train_split = np.load(
@@ -669,7 +670,7 @@ class EGOEXO(data.Dataset):
                 print(self.train_split)
                 print(os.path.join(root, 'splits',
                                  f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
-                print(self.train_split)
+               
             else:
                 self.train_split = np.load(
                     os.path.join(root, 'splits',
@@ -720,9 +721,69 @@ class EGOEXO(data.Dataset):
             seq = torch.stack(seq)
         # seq = torch.stack(seq, 1)
         # seq = seq.permute(1, 0, 2, 3)
-        print(seq)
-        print(vid)
         return seq, vid
+
+    def __len__(self):
+        # return 1
+        return len(self.train_split)
+
+
+
+class EGOEXO_FRAMES(data.Dataset):
+    """ Used for extracting features from images after training. Called in extract_frame_features.py."""
+    def __init__(self,
+                 root='./data/egoexo',
+                 transform=None, mode='val',
+                 num_frames=32,
+                 ol=[1],
+                 ds=[32],
+                 frame_dir="./data/egoexo/frames/",
+                 label_dir="./data/egoexo/action_descriptions_id/",
+                 class_dir="./data/egoexo/mapping_adj.json",
+                 pretrain=True,
+                 n_split=1):
+        self.root = root
+        self.transform = transform
+        self.mode = mode
+        self.num_frames = num_frames
+        self.ds = ds
+        self.overlap = ol
+        self.frame_dir = frame_dir
+        self.label_dir = label_dir
+        self.class_dir = class_dir
+        self.pretrain = pretrain
+        self.n_split = n_split
+
+        self.train_split = np.load(
+                    os.path.join(root, 'splits',
+                                 f'test_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+
+    def frame_sampler(self, videoname, vlen):
+        start_idx = int(videoname[1])
+        seq_idx = np.arange(self.num_frames) + start_idx
+        seq_idx = np.where(seq_idx < vlen, seq_idx, vlen - 1)
+        return seq_idx
+
+    def __getitem__(self, index):
+        videoname = self.train_split[index]
+        vsplt = videoname[0]
+        vpath = os.path.join(self.frame_dir, vsplt)
+        vpath = os.path.join(vpath, os.listdir(vpath)[0]) #TODO: refactor
+
+        vlen = len([f for f in os.listdir(vpath) if os.path.isfile(os.path.join(vpath, f))])
+        path_list = os.listdir(vpath)
+        path_list.sort(key=lambda x: int(x[4:-4]))
+        frame_index = self.frame_sampler(videoname, vlen)
+        seq = [Image.open(os.path.join(vpath, path_list[i])).convert('RGB') for i in frame_index]
+
+        if self.transform is not None:
+            seq = self.transform(seq)
+        else:
+            convert_tensor = transforms.ToTensor()
+            seq = [convert_tensor(img) for img in seq]
+            seq = torch.stack(seq)
+        fname = vsplt + '_' + videoname[1] + '.npy'
+        return seq, fname
 
     def __len__(self):
         # return 1

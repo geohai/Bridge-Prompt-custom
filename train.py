@@ -135,7 +135,6 @@ def main():
     elif args.dataset == 'egoexo':
         train_data = EGOEXO(transform=transform_train, mode='train', num_frames=config.data.num_frames,
                             n_split=config.data.n_split, ds=config.data.ds, ol=config.data.ol)
-        print(train_data.__len__())
     train_loader = DataLoader(train_data, batch_size=config.data.batch_size, num_workers=config.data.workers,
                               shuffle=True, pin_memory=True, drop_last=True)
     
@@ -206,7 +205,7 @@ def main():
             text_cnt = text_cnt.to(device, non_blocking=True)
             text_acts = text_acts.to(device, non_blocking=True)
 
-            text_all = text_all.to(device, non_blocking=True)
+            text_all = text_all.to(device, non_blocking=True)  
 
             image_embedding = model_image(images)
             image_embedding = image_embedding.view(b, t, -1)
@@ -222,9 +221,9 @@ def main():
             text_pos_embedding = text_pos_embedding.view(b, -1, text_pos_embedding.shape[-1])
 
             image_embedding = image_embedding.unsqueeze(1).repeat(1, config.data.max_act, 1, 1)
-            print('SHAPE----')
-            print(image_embedding.shape)
-            print(text_pos_embedding.shape)
+            # print('SHAPE----')
+            # print(image_embedding.shape)
+            # print(text_pos_embedding.shape)
             cnt_emb, image_embedding = fusion_model(image_embedding, text_pos_embedding)
 
             if config.network.fix_text:

@@ -1,6 +1,6 @@
 import os
 import torch.nn as nn
-from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES
+from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, EGOEXO_FRAMES
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import argparse
@@ -65,6 +65,9 @@ def main():
         val_data = GTEA_FRAMES(transform=transform_val)
     elif args.dataset == 'salads':
         val_data = SALADS_FRAMES(transform=transform_val)
+    elif args.dataset == 'egoexo':
+        val_data = EGOEXO_FRAMES(transform=transform_val, num_frames=config.data.num_frames,
+                                 n_split=config.data.n_split, ds=config.data.ds, ol=config.data.ol)
     else:
         val_data = None
     val_loader = DataLoader(val_data, batch_size=config.data.batch_size, num_workers=config.data.workers,
