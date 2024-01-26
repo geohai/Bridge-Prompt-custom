@@ -25,18 +25,20 @@ if __name__ == "__main__":
     # Split the files into 5 equal-sized splits
     splits = np.array_split(files, 5)
 
-    # Save the splits as the train splits
+    # Save the splits as the test splits
     for i, split in enumerate(splits):
-        split_file_path = os.path.join(splits_dir, f'train.split{i+1}.bundle')
+        split_file_path = os.path.join(splits_dir, f'test.split{i+1}.bundle')
 
         with open(split_file_path, "w") as split_file:
             split_file.write("\n".join(split))
+        
+        print(f"Split {i+1} saved to {split_file_path}")
 
-    # Now save test splits (all files not in the train split are in the corresponding test split)
+    # Now save train splits (all files not in the test split are in the corresponding train split)
     for i, split in enumerate(splits):
         test_split = files[~np.isin(files, split)]
-        split_file_path = os.path.join(splits_dir, f'test.split{i+1}.bundle')
+        split_file_path = os.path.join(splits_dir, f'train.split{i+1}.bundle')
         with open(split_file_path, "w") as split_file:
             split_file.write("\n".join(test_split))
 
-    print(f"Split {i+1} saved to {split_file_path}")
+        print(f"Split {i+1} saved to {split_file_path}")

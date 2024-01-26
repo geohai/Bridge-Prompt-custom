@@ -1,4 +1,4 @@
-name: gravit
+name: gravit-test
 channels:
   - conda-forge
   - defaults

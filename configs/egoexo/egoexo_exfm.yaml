@@ -1,4 +1,4 @@
-pretrain: "./exp/split3/last_model.pt" # all the splits should be the same
+pretrain: "./exp/split5/last_model.pt"
 seed: 1024
 data:
     dataset: egoexo
@@ -7,8 +7,8 @@ data:
     ds: [24]  # num_frames, ds, and ol need to match the data that you want to load
     ol: [1]
     seg_length: 1
-    n_split: 3 # match
-    batch_size: 64
+    n_split: 3 # TODO: maike sure n_split matches the split in pretrain and in save_dir
+    batch_size: 82
     workers: 32
     gpus: 4
     num_classes: 326

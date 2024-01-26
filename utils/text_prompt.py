@@ -1,42 +1,18 @@
 import torch
 import clip
 import numpy as np
+import json
 
 
 
-
-
-#### classes
-# 0 cut_tomato
-# 1 place_tomato_into_bowl
-# 2 cut_cheese
-# 3 place_cheese_into_bowl
-# 4 cut_lettuce
-# 5 place_lettuce_into_bowl
-# 6 add_salt
-# 7 add_vinegar
-# 8 add_oil
-# 9 add_pepper
-# 10 mix_dressing
-# 11 peel_cucumber
-# 12 cut_cucumber
-# 13 place_cucumber_into_bowl
-# 14 add_dressing
-# 15 mix_ingredients
-# 16 serve_salad_onto_plate
-# 17 action_start
-# 18 action_end
-#
-
-# take these and map to tools (one-hot encode tools)
 # co-train vision encoder and accelerometry encoder ?
 
-
-# 
-
-
-
 def text_prompt_slide(classes, id_list, dataset, cnt_max=10):
+    """ Classes is a dict containing all the possible actions
+    id_list is a list of the labels in the sampled window, corresponding to the frames in the window."""
+    # print('######')
+    # print(id_list)
+    # print('#######')
     text_aug_cnts = [f"This clip contains no actions.",
                      f"This clip contains only one action,", f"This clip contains two actions,",
                      f"This clip contains three actions,", f"This clip contains four actions,",
@@ -69,7 +45,21 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=10):
     num_long = len(text_long_temp)
     text_id = np.random.randint(num_temp, size=len(id_list) * cnt_max).reshape(-1, cnt_max)
     text_id_long = np.random.randint(num_long, size=len(id_list) * cnt_max).reshape(-1, cnt_max)
-    id_list_cnt = id_list >= 0  
+
+    # Specify the filepath of the adj_mapping.json file
+    filepath = f"./data/{dataset}/mapping_adj.json"
+
+    # Load the JSON file into a dictionary
+    with open(filepath, "r") as file:
+        adj_mapping = json.load(file)
+
+    if "none" in adj_mapping.values():
+        flipped_mapping = {v: k for k, v in adj_mapping.items()}
+        none_label = int(flipped_mapping["none"])
+
+    # get the number of actions in each window that are not "none"
+    id_list_cnt = (id_list != -1) & (id_list != none_label)
+
     id_list_cnt = torch.sum(id_list_cnt, dim=1)
     res_token_cnt = []
     # print('---')
@@ -90,7 +80,7 @@ def text_prompt_slide(classes, id_list, dataset, cnt_max=10):
 
 
 
-            # raise Exception('Number of actions exceeds max. You probably need to make the window duration shorter. Play with parameters in preprocess/extract_datawindow.py')
+            raise Exception('Number of actions in the clip exceeds max. You probably need to make the window duration shorter. Play with parameters in preprocess/extract_datawindow.py')
     res_token_cnt = torch.cat(res_token_cnt)
     res_token_acts = []
     res_token_all = []
