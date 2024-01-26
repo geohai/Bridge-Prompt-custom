@@ -548,6 +548,7 @@ class SALADS(data.Dataset):
         seq = [Image.open(os.path.join(vpath, path_list[i])).convert('RGB') for i in frame_index]
         vid = vlabel[frame_index]
         if self.pretrain:
+            vid = np.zeros((10,))
             vid = torch.from_numpy(vid)
             vid = torch.unique_consecutive(vid)
             vid = vid.numpy()
@@ -660,21 +661,19 @@ class EGOEXO(data.Dataset):
         #     with open(self.ext_class_dir, 'r') as f:
         #         self.classes = json.load(f)
         #         self.classes = {int(k): v for k, v in self.classes.items()}
-        print(os.path.join(root, 'splits',
-                                 f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+
         if not self.small_test:
             if self.mode == 'train':
                 self.train_split = np.load(
                     os.path.join(root, 'splits',
                                  f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
                 print(self.train_split)
-                print(os.path.join(root, 'splits',
-                                 f'train_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
                
             else:
                 self.train_split = np.load(
                     os.path.join(root, 'splits',
                                  f'test_split{self.n_split}_nf{self.num_frames}_ol{self.overlap}_ds{self.ds}.npy'))
+                print('Validation/test split loaded.')
         else:
             self.train_split = np.load(
                 os.path.join(root, 'splits',
@@ -684,7 +683,7 @@ class EGOEXO(data.Dataset):
         start_idx = int(videoname[1])
         ds = videoname[2]
         seq_idx = np.arange(self.num_frames) * int(ds) + start_idx
-        seq_idx = np.where(seq_idx < vlen, seq_idx, vlen - 1)
+        seq_idx = np.where(seq_idx < vlen, seq_idx, vlen - 1) # If an element in seq_idx is greater than or equal to vlen, it is replaced with vlen - 1. This step ensures that the generated frame indices do not exceed the total length of the video.
         return seq_idx
 
     def __getitem__(self, index):
@@ -705,13 +704,24 @@ class EGOEXO(data.Dataset):
         frame_index = self.frame_sampler(videoname, vlen)
         seq = [Image.open(os.path.join(vpath, path_list[i])).convert('RGB') for i in frame_index]
         vid = vlabel[frame_index]
+        # print(vid)
+        # remove "none" from actions
         if self.pretrain:
             vid = torch.from_numpy(vid)
-            vid = torch.unique_consecutive(vid)
+            vid = torch.unique_consecutive(vid) 
             vid = vid.numpy()
             vid = np.ma.masked_equal(vid, 0)
             vid = vid.compressed()
             vid = np.pad(vid, (0, 10 - vid.shape[0]), 'constant', constant_values=(0, -1))
+
+
+        count = np.sum(vid != -1)
+        if count >= 10:
+            print('VIDEO')
+            print(vid)
+            print(vid.shape)
+            print(f'Why are there 10+ actions in this clip??? {vpath}')
+            print(f'At these frames: {frame_index}')
 
         if self.transform is not None:
             seq = self.transform(seq)

@@ -179,8 +179,8 @@ def main():
 
     best_prec1 = 0.0
 
-    for k, v in base_model.named_parameters():
-        print('{}: {}'.format(k, v.requires_grad))
+    # for k, v in base_model.named_parameters():
+    #     print('{}: {}'.format(k, v.requires_grad))
     for epoch in tqdm(range(start_epoch, config.solver.epochs)):
         print('-------EPOCH: {}-------'.format(epoch))
         model_image.train()
@@ -238,6 +238,7 @@ def main():
             image_embedding_mean = image_embedding.mean(dim=1, keepdim=False)
             all_loss = get_clip_loss(image_embedding_mean, text_all_embedding, logit_scale, loss_img, loss_txt, device,
                                      gen_label_4list(list_id))
+      
             cnt_loss = get_clip_loss(cnt_emb, text_cnt_embedding, logit_scale, loss_img, loss_txt, device,
                                      gen_label(label_cnt))
             for dd in range(text_acts_embedding.shape[1]):

@@ -1,7 +1,7 @@
 import os
 import clip
 import torch.nn as nn
-from datasets import Breakfast, GTEA, SALADS
+from datasets import Breakfast, GTEA, SALADS, EGOEXO
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
@@ -85,13 +85,13 @@ def validate(epoch, val_loader, device, model, fusion_model, config,
             final_act_5.append(final_ind_5.cpu().numpy())
             final_cnt.append(indices_cnts.cpu().numpy())
 
-        np.save(f'./prompt_test/gtea/split{config.data.n_split}/final_act_1.npy',
+        np.save(f'./prompt_test/{config.data.dataset}/split{config.data.n_split}/final_act_1.npy',
                 np.vstack(final_act_1))
-        np.save(f'./prompt_test/gtea/split{config.data.n_split}/final_act_5.npy',
+        np.save(f'./prompt_test/{config.data.dataset}/split{config.data.n_split}/final_act_5.npy',
                 np.vstack(final_act_5))
-        np.save(f'./prompt_test/gtea/split{config.data.n_split}/final_cnt_1.npy',
+        np.save(f'./prompt_test/{config.data.dataset}/split{config.data.n_split}/final_cnt_1.npy',
                 np.vstack(final_cnt))
-        np.save(f'./prompt_test/gtea/split{config.data.n_split}/gt_act.npy',
+        np.save(f'./prompt_test/{config.data.dataset}/split{config.data.n_split}/gt_act.npy',
                 np.vstack(gt_act))
 
 
@@ -101,11 +101,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-cfg', default='./configs/gtea/gtea_test.yaml')
     parser.add_argument('--log_time', default='')
-    parser.add_argument('--dataset', default='gtea')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.safe_load(f)
+    args.dataset = config['data']['dataset']
+
     working_dir = os.path.join('./exp', config['network']['type'], config['network']['arch'], config['data']['dataset'],
                                args.log_time)
     print('-' * 80)
@@ -150,6 +151,11 @@ def main():
     elif args.dataset == 'salads':
         val_data = SALADS(transform=transform_val, mode='val', num_frames=config.data.num_frames,
                           n_split=config.data.n_split)
+    elif args.dataset == 'egoexo':
+        val_data = EGOEXO(transform=transform_val,  mode='val', num_frames=config.data.num_frames,
+                                 n_split=config.data.n_split, ds=config.data.ds, ol=config.data.ol)
+    else:
+        val_data = None
 
     val_loader = DataLoader(val_data, batch_size=config.data.batch_size, num_workers=config.data.workers, shuffle=False,
                             pin_memory=True, drop_last=False)
